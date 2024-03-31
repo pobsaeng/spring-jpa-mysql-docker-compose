@@ -1,0 +1,57 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: MySQL!234
+      MYSQL_DATABASE: test_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - db:/var/lib/mysql
+      - ./docker_db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5.1.1 # phpmyadmin/phpmyadmin:latest
+    container_name: my-php-myadmin
+    ports:
+      - "8085:80"
+    restart: unless-stopped
+    depends_on:
+      - db
+    networks:
+      - app_network
+
+  spring-boot-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      - db
+    networks:
+      - app_network
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - spring-boot-app
+    networks:
+      - app_network
+
+volumes:
+  db:
+    driver: local
+
+networks:
+  app_network:
+    driver: bridge
